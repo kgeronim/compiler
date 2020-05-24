@@ -7,8 +7,9 @@ fn main() {
     while let Some((prev_index, c)) = chars.next() {
         let token = match c {
             '"' => scan_string(&lang, &mut chars, prev_index),
-            '+' | '-' | '*' | '/' => Token::Operator(c),
-            _ if c.is_ascii_alphabetic() => scan_symbol(&lang, &mut chars, prev_index),
+            '+' | '-' | '*' | '/' | '=' => Token::Operator(c),
+            '(' | ')' | '{' | '}' | ';' => Token::Symbol(c),
+            _ if c.is_ascii_alphabetic() => scan_identifier(&lang, &mut chars, prev_index),
             _ if c.is_digit(10) => scan_number(&lang, &mut chars, prev_index),
             _ => Token::Other(c),
         };
@@ -23,7 +24,8 @@ enum Token<'a> {
     Operator(char),
     Other(char),
     Number(&'a str),
-    Symbol(&'a str),
+    Identifier(&'a str),
+    Symbol(char),
 }
 
 fn scan_string<'a, T: Iterator<Item = (usize, char)>>(
@@ -33,9 +35,8 @@ fn scan_string<'a, T: Iterator<Item = (usize, char)>>(
 ) -> Token<'a> {
     loop {
         if let Some((curr_index, c)) = chars.next() {
-            match c {
-                '"' => break Token::String(&lang[prev_index + 1..curr_index]),
-                _ => continue,
+            if c == '"' {
+                break Token::String(&lang[prev_index + 1..curr_index]);
             }
         } else {
             panic!("unterminated string literal")
@@ -59,7 +60,7 @@ fn scan_number<'a, T: Iterator<Item = (usize, char)>>(
     }
 }
 
-fn scan_symbol<'a, T: Iterator<Item = (usize, char)>>(
+fn scan_identifier<'a, T: Iterator<Item = (usize, char)>>(
     lang: &'a str,
     chars: &mut Peekable<T>,
     prev_index: usize,
@@ -69,7 +70,7 @@ fn scan_symbol<'a, T: Iterator<Item = (usize, char)>>(
             if c.is_ascii_alphanumeric() {
                 chars.next();
             } else {
-                break Token::Symbol(&lang[prev_index..*future_index]);
+                break Token::Identifier(&lang[prev_index..*future_index]);
             }
         }
     }
