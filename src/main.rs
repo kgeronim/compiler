@@ -2,10 +2,8 @@ use std::iter::Peekable;
 use std::str::CharIndices;
 
 fn main() {
-    let lang = String::from("んdata=\"stRing藏\";data2=1;data3=.12939+546.23;empty=\"\"");
+    let lang = String::from("ん data=\"stRing藏\";\n data2=1;data3=.12939+546.23; empty=\"\"");
     let tokens = Tokens::from(&lang).enumerate();
-
-    println!("{}", &lang[8..19]);
 
     for token in tokens {
         println!("{:?}", token)
@@ -35,14 +33,11 @@ impl<'a> Tokens<'a> {
         }
     }
 
-    fn scan_string(&mut self, index_start: usize) -> Token<'a> {
+    fn scan_string(&mut self, idx_s: usize) -> Token<'a> {
         loop {
-            if let Some((index_end, c)) = self.chars.next() {
+            if let Some((idx_e, c)) = self.chars.next() {
                 if c == '"' {
-                    break Token::String(
-                        &self.lang[index_start + 1..index_end],
-                        (index_start, index_end + 1),
-                    );
+                    break Token::String(&self.lang[idx_s + 1..idx_e], (idx_s, idx_e + 1));
                 }
             } else {
                 panic!("unterminated string literal")
@@ -50,31 +45,25 @@ impl<'a> Tokens<'a> {
         }
     }
 
-    fn scan_number(&mut self, index_start: usize) -> Token<'a> {
+    fn scan_number(&mut self, idx_s: usize) -> Token<'a> {
         loop {
-            if let Some((index_end, c)) = self.chars.peek() {
+            if let Some((idx_e, c)) = self.chars.peek() {
                 if c.is_digit(10) || *c == '.' {
                     self.chars.next();
                 } else {
-                    break Token::Number(
-                        &self.lang[index_start..*index_end],
-                        (index_start, *index_end),
-                    );
+                    break Token::Number(&self.lang[idx_s..*idx_e], (idx_s, *idx_e));
                 }
             }
         }
     }
 
-    fn scan_identifier(&mut self, index_start: usize) -> Token<'a> {
+    fn scan_identifier(&mut self, idx_s: usize) -> Token<'a> {
         loop {
-            if let Some((index_end, c)) = self.chars.peek() {
+            if let Some((idx_e, c)) = self.chars.peek() {
                 if c.is_ascii_alphanumeric() {
                     self.chars.next();
                 } else {
-                    break Token::Identifier(
-                        &self.lang[index_start..*index_end],
-                        (index_start, *index_end),
-                    );
+                    break Token::Identifier(&self.lang[idx_s..*idx_e], (idx_s, *idx_e));
                 }
             }
         }
@@ -85,14 +74,18 @@ impl<'a> Iterator for Tokens<'a> {
     type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some((index_start, c)) = self.chars.next() {
+        if let Some((idx_s, c)) = self.chars.next() {
             match c {
-                '"' => Some(self.scan_string(index_start)),
-                '+' | '-' | '*' | '/' | '=' => Some(Token::Operator(c, (index_start, index_start + c.len_utf8()))),
-                '(' | ')' | '{' | '}' | ';' => Some(Token::Symbol(c, (index_start, index_start + c.len_utf8()))),
-                '0'..='9' => Some(self.scan_number(index_start)),
-                'a'..='z' => Some(self.scan_identifier(index_start)),
-                _ => Some(Token::Other(c, (index_start, index_start + c.len_utf8()))),
+                '"' => Some(self.scan_string(idx_s)),
+                '+' | '-' | '*' | '/' | '=' => {
+                    Some(Token::Operator(c, (idx_s, idx_s + c.len_utf8())))
+                }
+                '(' | ')' | '{' | '}' | ';' => {
+                    Some(Token::Symbol(c, (idx_s, idx_s + c.len_utf8())))
+                }
+                '0'..='9' => Some(self.scan_number(idx_s)),
+                'a'..='z' => Some(self.scan_identifier(idx_s)),
+                _ => Some(Token::Other(c, (idx_s, idx_s + c.len_utf8()))),
             }
         } else {
             None
