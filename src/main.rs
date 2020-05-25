@@ -2,15 +2,17 @@ use std::iter::Peekable;
 use std::str::CharIndices;
 
 fn main() {
-    let lang = String::from("ん data=\"stRing藏\";\n data2=1;data3=.12939+546.23; empty=\"\"");
-    let tokens = Tokens::from(&lang).enumerate();
+    let lang = String::from("ん data=\"stRing藏\";\ndata2=1;data3=.12939+546.23; empty=\"\"");
+    let tokens = Tokens::from(&lang)
+        .filter(|x| *x != Token::Whitespace)
+        .enumerate();
 
     for token in tokens {
         println!("{:?}", token)
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum Token<'a> {
     String(&'a str, (usize, usize)),
     Operator(char, (usize, usize)),
@@ -18,6 +20,7 @@ enum Token<'a> {
     Number(&'a str, (usize, usize)),
     Identifier(&'a str, (usize, usize)),
     Symbol(char, (usize, usize)),
+    Whitespace,
 }
 
 struct Tokens<'a> {
@@ -97,6 +100,7 @@ impl<'a> Iterator for Tokens<'a> {
                     let value = &self.lang[idx_s..idx_e];
                     Some(Token::Identifier(value, (idx_s, idx_e)))
                 }
+                _ if c.is_ascii_whitespace() => Some(Token::Whitespace),
                 _ => Some(Token::Other(c, (idx_s, idx_s + c.len_utf8()))),
             }
         } else {
