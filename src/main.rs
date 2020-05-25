@@ -33,11 +33,11 @@ impl<'a> Tokens<'a> {
         }
     }
 
-    fn scan_string(&mut self, idx_s: usize) -> Token<'a> {
+    fn string_idx_e(&mut self) -> usize {
         loop {
             if let Some((idx_e, c)) = self.chars.next() {
                 if c == '"' {
-                    break Token::String(&self.lang[idx_s + 1..idx_e], (idx_s, idx_e + 1));
+                    break idx_e;
                 }
             } else {
                 panic!("unterminated string literal")
@@ -45,25 +45,25 @@ impl<'a> Tokens<'a> {
         }
     }
 
-    fn scan_number(&mut self, idx_s: usize) -> Token<'a> {
+    fn number_idx_e(&mut self) -> usize {
         loop {
             if let Some((idx_e, c)) = self.chars.peek() {
                 if c.is_digit(10) || *c == '.' {
                     self.chars.next();
                 } else {
-                    break Token::Number(&self.lang[idx_s..*idx_e], (idx_s, *idx_e));
+                    break *idx_e;
                 }
             }
         }
     }
 
-    fn scan_identifier(&mut self, idx_s: usize) -> Token<'a> {
+    fn ident_idx_e(&mut self) -> usize {
         loop {
             if let Some((idx_e, c)) = self.chars.peek() {
                 if c.is_ascii_alphanumeric() {
                     self.chars.next();
                 } else {
-                    break Token::Identifier(&self.lang[idx_s..*idx_e], (idx_s, *idx_e));
+                    break *idx_e;
                 }
             }
         }
@@ -76,15 +76,27 @@ impl<'a> Iterator for Tokens<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((idx_s, c)) = self.chars.next() {
             match c {
-                '"' => Some(self.scan_string(idx_s)),
+                '"' => {
+                    let idx_e = self.string_idx_e();
+                    let value = &self.lang[idx_s + 1..idx_e];
+                    Some(Token::String(value, (idx_s, idx_e + 1)))
+                }
                 '+' | '-' | '*' | '/' | '=' => {
                     Some(Token::Operator(c, (idx_s, idx_s + c.len_utf8())))
                 }
                 '(' | ')' | '{' | '}' | ';' => {
                     Some(Token::Symbol(c, (idx_s, idx_s + c.len_utf8())))
                 }
-                '0'..='9' => Some(self.scan_number(idx_s)),
-                'a'..='z' => Some(self.scan_identifier(idx_s)),
+                '0'..='9' => {
+                    let idx_e = self.number_idx_e();
+                    let value = &self.lang[idx_s..idx_e];
+                    Some(Token::Number(value, (idx_s, idx_e)))
+                }
+                'a'..='z' => {
+                    let idx_e = self.ident_idx_e();
+                    let value = &self.lang[idx_s..idx_e];
+                    Some(Token::Identifier(value, (idx_s, idx_e)))
+                }
                 _ => Some(Token::Other(c, (idx_s, idx_s + c.len_utf8()))),
             }
         } else {
