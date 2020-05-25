@@ -3,21 +3,21 @@ use std::str::CharIndices;
 
 fn main() {
     let lang = String::from("data=\"stRing藏\";data2=1;data3=.12939+546.23;empty=\"\"");
-    let mut tokens = Tokens::from(&lang);
+    let tokens = Tokens::from(&lang).enumerate();
 
-    while let Some(token) = tokens.next() {
+    for token in tokens {
         println!("{:?}", token)
     }
 }
 
 #[derive(Debug)]
 enum Token<'a> {
-    String(&'a str),
-    Operator(char),
-    Other(char),
-    Number(&'a str),
-    Identifier(&'a str),
-    Symbol(char),
+    String(&'a str, (usize, usize)),
+    Operator(char, usize),
+    Other(char, usize),
+    Number(&'a str, (usize, usize)),
+    Identifier(&'a str, (usize, usize)),
+    Symbol(char, usize),
 }
 
 struct Tokens<'a> {
@@ -37,7 +37,10 @@ impl<'a> Tokens<'a> {
         loop {
             if let Some((index_end, c)) = self.chars.next() {
                 if c == '"' {
-                    break Token::String(&self.lang[index_start + 1..index_end]);
+                    break Token::String(
+                        &self.lang[index_start + 1..index_end],
+                        (index_start, index_end),
+                    );
                 }
             } else {
                 panic!("unterminated string literal")
@@ -51,7 +54,10 @@ impl<'a> Tokens<'a> {
                 if c.is_digit(10) || *c == '.' {
                     self.chars.next();
                 } else {
-                    break Token::Number(&self.lang[index_start..*index_end]);
+                    break Token::Number(
+                        &self.lang[index_start..*index_end],
+                        (index_start, *index_end),
+                    );
                 }
             }
         }
@@ -63,7 +69,10 @@ impl<'a> Tokens<'a> {
                 if c.is_ascii_alphanumeric() {
                     self.chars.next();
                 } else {
-                    break Token::Identifier(&self.lang[index_start..*index_end]);
+                    break Token::Identifier(
+                        &self.lang[index_start..*index_end],
+                        (index_start, *index_end),
+                    );
                 }
             }
         }
@@ -77,11 +86,11 @@ impl<'a> Iterator for Tokens<'a> {
         if let Some((index_start, c)) = self.chars.next() {
             match c {
                 '"' => Some(self.scan_string(index_start)),
-                '+' | '-' | '*' | '/' | '=' => Some(Token::Operator(c)),
-                '(' | ')' | '{' | '}' | ';' => Some(Token::Symbol(c)),
+                '+' | '-' | '*' | '/' | '=' => Some(Token::Operator(c, index_start)),
+                '(' | ')' | '{' | '}' | ';' => Some(Token::Symbol(c, index_start)),
                 '0'..='9' => Some(self.scan_number(index_start)),
                 'a'..='z' => Some(self.scan_identifier(index_start)),
-                _ => Some(Token::Other(c)),
+                _ => Some(Token::Other(c, index_start)),
             }
         } else {
             None
