@@ -33,7 +33,7 @@ impl<'a> Tokens<'a> {
         }
     }
 
-    fn string_idx_e(&mut self) -> usize {
+    fn scan_string(&mut self) -> usize {
         loop {
             if let Some((idx_e, c)) = self.chars.next() {
                 if c == '"' {
@@ -45,7 +45,7 @@ impl<'a> Tokens<'a> {
         }
     }
 
-    fn number_idx_e(&mut self) -> usize {
+    fn scan_number(&mut self) -> usize {
         loop {
             if let Some((idx_e, c)) = self.chars.peek() {
                 if c.is_digit(10) || *c == '.' {
@@ -57,7 +57,7 @@ impl<'a> Tokens<'a> {
         }
     }
 
-    fn ident_idx_e(&mut self) -> usize {
+    fn scan_ident(&mut self) -> usize {
         loop {
             if let Some((idx_e, c)) = self.chars.peek() {
                 if c.is_ascii_alphanumeric() {
@@ -77,7 +77,7 @@ impl<'a> Iterator for Tokens<'a> {
         if let Some((idx_s, c)) = self.chars.next() {
             match c {
                 '"' => {
-                    let idx_e = self.string_idx_e();
+                    let idx_e = self.scan_string();
                     let value = &self.lang[idx_s + 1..idx_e];
                     Some(Token::String(value, (idx_s, idx_e + 1)))
                 }
@@ -88,12 +88,12 @@ impl<'a> Iterator for Tokens<'a> {
                     Some(Token::Symbol(c, (idx_s, idx_s + c.len_utf8())))
                 }
                 '0'..='9' => {
-                    let idx_e = self.number_idx_e();
+                    let idx_e = self.scan_number();
                     let value = &self.lang[idx_s..idx_e];
                     Some(Token::Number(value, (idx_s, idx_e)))
                 }
                 'a'..='z' => {
-                    let idx_e = self.ident_idx_e();
+                    let idx_e = self.scan_ident();
                     let value = &self.lang[idx_s..idx_e];
                     Some(Token::Identifier(value, (idx_s, idx_e)))
                 }
