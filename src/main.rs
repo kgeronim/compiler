@@ -3,11 +3,11 @@ use std::str::CharIndices;
 
 fn main() {
     let lang = String::from("ん data=\"stRing藏\";\ndata2=1;data3=.12939+546.23; empty=\"\"");
-    let tokens = Tokens::from(&lang)
+    let tokenizer = Tokenizer::from(&lang)
         .filter(|x| *x != Token::WS)
         .enumerate();
 
-    for token in tokens {
+    for token in tokenizer {
         println!("{:?}", token)
     }
 }
@@ -15,9 +15,8 @@ fn main() {
 #[derive(Debug, PartialEq)]
 enum Literal<'a> {
     String(&'a str),
-    Int(&'a str),
-    // Double(f64),
-    // Bool(bool)
+    Number(&'a str),
+    // Bool(&'a str)
 }
 
 #[derive(Debug, PartialEq)]
@@ -30,14 +29,14 @@ enum Token<'a> {
     WS,
 }
 
-struct Tokens<'a> {
+struct Tokenizer<'a> {
     lang: &'a str,
     chars: Peekable<CharIndices<'a>>,
 }
 
-impl<'a> Tokens<'a> {
+impl<'a> Tokenizer<'a> {
     fn from(lang: &'a str) -> Self {
-        Tokens {
+        Tokenizer {
             lang,
             chars: lang.char_indices().peekable(),
         }
@@ -58,7 +57,7 @@ impl<'a> Tokens<'a> {
     fn scan_number(&mut self) -> usize {
         loop {
             if let Some((idx_e, c)) = self.chars.peek() {
-                if c.is_digit(10) || *c == '.' {
+                if c.is_digit(10) {
                     self.chars.next();
                 } else {
                     break *idx_e;
@@ -80,7 +79,7 @@ impl<'a> Tokens<'a> {
     }
 }
 
-impl<'a> Iterator for Tokens<'a> {
+impl<'a> Iterator for Tokenizer<'a> {
     type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -94,13 +93,13 @@ impl<'a> Iterator for Tokens<'a> {
                 '+' | '-' | '*' | '/' | '=' => {
                     Some(Token::Operator(c, (idx_s, idx_s + c.len_utf8())))
                 }
-                '(' | ')' | '{' | '}' | ';' => {
+                '(' | ')' | '{' | '}' | ';' | '.' => {
                     Some(Token::Separator(c, (idx_s, idx_s + c.len_utf8())))
                 }
                 '0'..='9' => {
                     let idx_e = self.scan_number();
                     let value = &self.lang[idx_s..idx_e];
-                    Some(Token::Literal(Literal::Int(value), (idx_s, idx_e)))
+                    Some(Token::Literal(Literal::Number(value), (idx_s, idx_e)))
                 }
                 'a'..='z' => {
                     let idx_e = self.scan_identifier();
